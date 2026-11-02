@@ -1,0 +1,27 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Login · BLACKMAMERSTUDIO</title>
+<link rel="icon" href="/assets/favicon.ico">
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(ellipse at top,#1a0508,#0a0a0b 60%);color:#e8e8ea;font-family:system-ui,-apple-system,sans-serif}
+.card{width:min(400px,92vw);padding:28px;border:1px solid #2a2a2e;border-radius:16px;background:#101012;display:grid;gap:12px}
+img{width:48px;height:48px;border-radius:10px}h1{margin:4px 0 0;font-size:20px}p{margin:0;color:#9a9aa2;font-size:13px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px}.tabs button{background:#17171a;border:1px solid #2a2a2e;color:#9a9aa2}.tabs button.on{background:#c0121f;border-color:#c0121f;color:#fff}
+input,button{padding:12px;border-radius:8px;border:1px solid #333;background:#1a1a1d;color:inherit;font:inherit;width:100%}
+.go{background:#c0121f;border-color:#c0121f;font-weight:600;cursor:pointer}.go:disabled{opacity:.6}#e{color:#ff7b7b;font-size:13px;min-height:16px}
+small{color:#77777f;font-size:12px;line-height:1.4}
+</style></head><body>
+<form class="card" id="f"><img src="/assets/icon.png" alt=""><h1>BLACKMAMERSTUDIO</h1><p>Masuk atau daftar untuk mulai convert audio.</p>
+<div class="tabs"><button type="button" id="tl" class="on">Login</button><button type="button" id="tr">Daftar</button></div>
+<input id="u" placeholder="Username" autocomplete="username" required><input id="p" type="password" placeholder="Password (min 8)" autocomplete="current-password" required>
+<div id="e"></div><button class="go" id="go">Login</button>
+<small>Akun terkunci ke device pertama yang dipakai daftar. Login dari device lain akan ditolak.</small></form>
+<script>
+let mode='login';
+function device(){try{let d=localStorage.getItem('bm_device');if(!d){d=crypto.randomUUID()+crypto.randomUUID();localStorage.setItem('bm_device',d)}
+document.cookie='bm_device='+d.slice(0,16)+';path=/;max-age=31536000;SameSite=Lax';return d}catch(e){return ''}}
+function setMode(m){mode=m;tl.className=m=='login'?'on':'';tr.className=m=='register'?'on':'';go.textContent=m=='login'?'Login':'Daftar';p.autocomplete=m=='login'?'current-password':'new-password'}
+tl.onclick=()=>setMode('login');tr.onclick=()=>setMode('register');if(location.pathname=='/register')setMode('register');
+f.onsubmit=async ev=>{ev.preventDefault();go.disabled=true;e.textContent='';
+ try{const r=await fetch(mode=='login'?'/auth/login':'/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u.value,password:p.value,device:device()})});
+ const j=await r.json();if(j.ok)location.href=new URLSearchParams(location.search).get('next')||j.next;else{e.textContent=j.error||'Gagal';go.disabled=false}}
+ catch(x){e.textContent='Koneksi gagal';go.disabled=false}};
+</script></body></html>

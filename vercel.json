@@ -1,12 +1,10 @@
-
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "functions": {
     "api/index.js": {
-      "maxDuration": 60,
-      "memory": 1024,
-      "includeFiles": "public/**"
+      "maxDuration": 300,
+      "includeFiles": "{public/**,bin/**}"
     }
   },
   "rewrites": [

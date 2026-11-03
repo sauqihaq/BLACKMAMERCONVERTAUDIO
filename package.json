@@ -7,10 +7,11 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "build:pages": "node scripts/build-pages.js"
+    "build:pages": "node scripts/build-pages.js",
+    "postinstall": "node scripts/install-ytdlp.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",

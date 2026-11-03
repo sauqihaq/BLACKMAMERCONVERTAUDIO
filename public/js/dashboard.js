@@ -389,29 +389,74 @@
 
     async function startConvert() {
       const btn = $('#convert-btn');
+      const original = btn.innerHTML;
       btn.disabled = true;
-
       try {
-        let jobId;
-
         if (state.mode === 'url') {
           const url = urlInput.value.trim();
-          if (!url) throw new Error('Paste a link first.');
-          const res = await api('/api/convert', { method: 'POST', body: { url, preset: state.preset } });
-          jobId = res.jobId;
-        } else {
-          if (!fileInput.files.length) throw new Error('Choose a file first.');
-          const form = new FormData();
-          form.append('file', fileInput.files[0]);
-          form.append('preset', state.preset);
-          const res = await api('/api/convert-upload', { method: 'POST', body: form });
-          jobId = res.jobId;
+          if (!url) throw new Error('Paste link YouTube atau SoundCloud terlebih dahulu.');
+          const card = $('#job-card');
+          card.hidden = false;
+          $('#job-title').textContent = 'BLACKMAMER FFmpeg Converter';
+          $('#job-badge').textContent = 'running';
+          $('#job-message').textContent = 'Mengambil audio dan memproses dengan FFmpeg...';
+          $('#job-percent').textContent = '...';
+          $('#job-fill').style.width = '35%';
+          $('#parts-wrap').hidden = true;
+          $('#stage-list').innerHTML = '<li class="stage-item is-active"><span class="stage-dot"></span>yt-dlp → FFmpeg → OGG → ZIP</li>';
+          btn.textContent = 'Memproses...';
+          const response = await fetch('/api/convert-download', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url,
+              preset: state.preset,
+              normalize: Boolean($('#normalize').checked),
+            }),
+          });
+          if (!response.ok) {
+            let detail = null;
+            try { detail = await response.json(); } catch {}
+            throw new Error(detail?.error || 'Konversi gagal (HTTP ' + response.status + ').');
+          }
+          if (!(response.headers.get('content-type') || '').includes('application/zip')) {
+            throw new Error('Server tidak mengembalikan ZIP. Periksa Vercel Runtime Logs.');
+          }
+          const blob = await response.blob();
+          const disposition = response.headers.get('content-disposition') || '';
+          const match = disposition.match(/filename="([^"]+)"/);
+          const filename = match ? match[1] : 'BLACKMAMER-audio.zip';
+          const downloadUrl = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => URL.revokeObjectURL(downloadUrl), 30000);
+          $('#job-message').textContent = 'Selesai! ZIP berisi audio OGG sudah di-download.';
+          $('#job-percent').textContent = '100%';
+          $('#job-fill').style.width = '100%';
+          $('#job-badge').textContent = 'complete';
+          toast('Konversi berhasil. Cek folder Downloads.', 'success');
+          return;
         }
-
-        watchJob(jobId);
+        // File-upload workflow stays unchanged. Large uploads require object
+        // storage rather than Vercel's limited request body size.
+        if (!fileInput.files.length) throw new Error('Pilih file audio terlebih dahulu.');
+        const form = new FormData();
+        form.append('file', fileInput.files[0]);
+        form.append('preset', state.preset);
+        const res = await api('/api/convert-upload', { method: 'POST', body: form });
+        watchJob(res.jobId);
       } catch (err) {
+        const msg = err.message || 'Konversi gagal.';
+        if ($('#job-card') && !$('#job-card').hidden) $('#job-message').textContent = msg;
+        toast(msg, 'error');
+      } finally {
         btn.disabled = false;
-        toast(err.message, 'error');
+        btn.innerHTML = original;
       }
     }
 

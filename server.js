@@ -23,6 +23,7 @@ const store = require('./lib/store');
 const auth = require('./lib/auth');
 const vault = require('./lib/crypto').createVault(config.keySecret);
 const convert = require('./lib/convert');
+const directConvert = require('./lib/convert-download');
 const roblox = require('./lib/roblox');
 const accounts = require('./lib/accounts');
 
@@ -478,7 +479,51 @@ app.post('/api/detect', auth.requireAuth, async (req, res) => {
       estimatedParts: Math.max(1, Math.ceil(meta.durationSec / config.roblox.maxAssetSeconds)),
     });
   } catch (err) {
-    res.status(502).json({ error: 'Could not read that link.', detail: err.message });
+    console.error('[detect]', err.message);
+    res.status(502).json({ error: err.message || 'Gagal membaca sumber audio.' });
+  }
+});
+
+// Direct URL conversion: the same invocation produces the ZIP download.
+// Legacy background jobs below remain for other workflows.
+app.post('/api/convert-download', auth.requireAuth, async (req, res) => {
+  if (!store.settings().features.convert) {
+    return res.status(503).json({ error: 'Konversi sedang dinonaktifkan.' });
+  }
+  const remaining = quotaLeft(req.user);
+  if (remaining !== null && remaining <= 0) {
+    return res.status(402).json({ error: 'Batas konversi harian sudah habis.' });
+  }
+  const url = String(req.body?.url || '').trim();
+  if (!directConvert.validSource(url)) {
+    return res.status(400).json({ error: 'Gunakan link HTTPS YouTube atau SoundCloud yang valid.' });
+  }
+  const preset = config.presets[String(req.body?.preset || 'default')] || config.presets.default;
+  const plan = planFor(req.user);
+  const speed = plan.speedControl && Number(req.body?.speed) > 0 ? Number(req.body.speed) : preset.speed;
+  try {
+    await directConvert.convertDownload({
+      url,
+      speed,
+      normalize: req.body?.normalize === true,
+      maxSeconds: config.roblox.maxAssetSeconds,
+      res,
+      onReady: async ({ title, parts }) => {
+        bumpUsage(req.user.id);
+        store.pushActivity({
+          userId: req.user.id,
+          type: 'convert',
+          title,
+          parts,
+          platform: /soundcloud/i.test(url) ? 'soundcloud' : 'youtube'
+        });
+        await store.flush();
+      },
+    });
+  } catch (err) {
+    console.error('[convert-download]', err);
+    if (!res.headersSent) return res.status(502).json({ error: err.message || 'Konversi gagal.' });
+    res.destroy(err);
   }
 });
 

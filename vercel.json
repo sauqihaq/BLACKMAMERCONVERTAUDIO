@@ -1,11 +1,26 @@
+
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "functions": {
-    "server.js": { "maxDuration": 300, "memory": 1024, "includeFiles": "public/**" }
+    "api/index.js": {
+      "maxDuration": 60,
+      "memory": 1024,
+      "includeFiles": "public/**"
+    }
   },
   "rewrites": [
-    { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/admin-login", "destination": "/admin-login.html" },
-    { "source": "/(.*)", "destination": "/server.js" }
+    {
+      "source": "/admin",
+      "destination": "/admin-login.html"
+    },
+    {
+      "source": "/admin-login",
+      "destination": "/admin-login.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/api/index"
+    }
   ]
 }

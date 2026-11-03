@@ -89,13 +89,13 @@
     try {
       const me = await api('/api/auth/me');
       if (!me.authenticated) {
-        location.replace('/en?login=1&next=%2Fdashboard');
+        location.replace('/login?next=%2Fdashboard');
         return;
       }
       state.me = me;
       paintUser();
     } catch {
-      location.replace('/en?login=1&next=%2Fdashboard');
+      location.replace('/login?next=%2Fdashboard');
       return;
     }
 
@@ -126,7 +126,7 @@
   function bindChrome() {
     $('#logout-btn').addEventListener('click', async () => {
       await api('/auth/logout', { method: 'POST' });
-      location.href = '/en';
+      location.href = '/id';
     });
 
     const menu = $('#menu-btn');
@@ -153,7 +153,7 @@
 
   function route() {
     const hash = location.hash.replace(/^#\/?/, '') || 'convert';
-    const view = VIEW_META[hash] ? hash : 'convert';
+    const view = VIEW_META[hash] && (hash !== 'admin' || state.me?.user?.isAdmin) ? hash : 'convert';
     state.view = view;
 
     const [title, sub] = VIEW_META[view];

@@ -39,10 +39,19 @@ Koneksi Discord/Roblox, pembayaran Midtrans, kemampuan konversi URL, dan library
 Kode backend dan fungsionalitas yang disertakan berasal dari proyek yang kamu unggah; perubahan ini memodifikasi tampilan dan branding, bukan jaminan integrasi pihak ketiga tanpa kredensial.
 
 ## Deploy ke Vercel
-Env vars: `BASE_URL`, `SESSION_SECRET`, `KEY_SECRET`, `ADMIN_PASSWORD`, `ADMIN_USERNAME` (default `blackmamer`), `ALLOW_DEV_LOGIN=0`. Login admin di `/admin-login`.
+Env vars: `BASE_URL`, `SESSION_SECRET`, `KEY_SECRET`, `ADMIN_PASSWORD`, `ADMIN_USERNAME` (default `blackmamer`), `ALLOW_DEV_LOGIN=0`. Buka **`/admin`** untuk halaman login admin; setelah login masuk ke `/dashboard#/admin`. Atur `ADMIN_PASSWORD` di Vercel agar login admin berfungsi.
 Catatan: storage Vercel sementara (/tmp) dan body request maks 4.5MB — untuk konversi file besar pakai Render/VPS.
 
 ## Login sendiri (tanpa Discord)
 - `/login` dan `/register`: username + password (scrypt). Akun terkunci ke device pertama (device ID di browser). `BIND_IP=1` untuk kunci IP juga.
 - Admin reset kunci: `POST /api/admin/reset-device {"username":"..."}`.
 - Persistensi di Vercel: isi `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (atau Vercel KV: `KV_REST_API_URL`/`KV_REST_API_TOKEN`). Tanpa itu, akun hilang saat instance restart.
+
+## Perbaikan alur login dan bahasa (4 November 2026)
+- `/` mengarah ke `/id` secara default, kecuali pengunjung sudah memilih EN sebelumnya.
+- Semua tombol masuk / Mulai Sekarang / harga pada landing page mengarah ke `/login` (akun username/password).
+- `/admin` menampilkan login administrator jika belum login; admin yang sudah masuk diarahkan ke `/dashboard#/admin`.
+- `/dashboard` yang belum login diarahkan ke `/login?next=%2Fdashboard`, bukan `/en`.
+- `/admin-login` tetap bisa dibuka langsung; tanpa `ADMIN_PASSWORD`, form tetap terbuka namun login akan memberi pesan konfigurasi yang jelas.
+- Deployment ke Vercel membutuhkan `ADMIN_PASSWORD`, `ADMIN_USERNAME` (default `blackmamer`), `SESSION_SECRET` (acak & kuat), `BASE_URL` dengan URL Vercel, serta `UPSTASH_REDIS_REST_URL` dan `UPSTASH_REDIS_REST_TOKEN` untuk menyimpan akun antar-instance.
+- Setelah ganti environment variables, **redeploy**. Edit ZIP lokal tidak otomatis mengubah situs yang sudah online.

@@ -20,8 +20,11 @@ function device(){try{let d=localStorage.getItem('bm_device');if(!d){d=crypto.ra
 document.cookie='bm_device='+d.slice(0,16)+';path=/;max-age=31536000;SameSite=Lax';return d}catch(e){return ''}}
 function setMode(m){mode=m;tl.className=m=='login'?'on':'';tr.className=m=='register'?'on':'';go.textContent=m=='login'?'Login':'Daftar';p.autocomplete=m=='login'?'current-password':'new-password'}
 tl.onclick=()=>setMode('login');tr.onclick=()=>setMode('register');if(location.pathname=='/register')setMode('register');
+const authError=new URLSearchParams(location.search).get('error');
+if(authError)document.getElementById('e').textContent='Login Discord tidak berhasil. Silakan masuk dengan username dan password.';
+function validNext(path){return typeof path==='string'&&/^\/(?!\/)/.test(path)&&!/[\r\n\\]/.test(path)?path:'/dashboard'}
 f.onsubmit=async ev=>{ev.preventDefault();go.disabled=true;e.textContent='';
  try{const r=await fetch(mode=='login'?'/auth/login':'/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u.value,password:p.value,device:device()})});
- const j=await r.json();if(j.ok)location.href=new URLSearchParams(location.search).get('next')||j.next;else{e.textContent=j.error||'Gagal';go.disabled=false}}
+ const j=await r.json();if(j.ok)location.href=validNext(new URLSearchParams(location.search).get('next')||j.next);else{e.textContent=j.error||'Gagal';go.disabled=false}}
  catch(x){e.textContent='Koneksi gagal';go.disabled=false}};
 </script></body></html>

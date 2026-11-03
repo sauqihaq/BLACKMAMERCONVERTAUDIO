@@ -53,6 +53,15 @@ app.use((req, res, next) => {
   next();
 });
 
+// Route must be registered BEFORE static hosting to handle /admin reliably.
+// The public/admin.html file is also provided as a fallback for older deployments.
+app.get('/admin', (req, res) => {
+  const user = auth.currentUser(req);
+  if (user && user.isAdmin && !user.blocked) return res.redirect('/dashboard#/admin');
+  res.set('Cache-Control', 'no-store');
+  return res.sendFile(path.join(PUBLIC_DIR, 'admin-login.html'));
+});
+
 app.use(express.static(PUBLIC_DIR, { extensions: ['html'], maxAge: 0, redirect: false }));
 
 const upload = multer({ dest: TMP_DIR, limits: { fileSize: 250 * 1024 * 1024 } });
@@ -338,13 +347,6 @@ app.post('/auth/dev-login', (req, res) => {
 
   const user = auth.login(req, res, profile);
   res.json({ ok: true, user });
-});
-
-// Admin entry point. Never expose the admin workspace without authorization.
-app.get('/admin', (req, res) => {
-  const user = auth.currentUser(req);
-  if (user && user.isAdmin && !user.blocked) return res.redirect('/dashboard#/admin');
-  return res.redirect('/admin-login');
 });
 
 app.get('/admin-login', (req, res) => {

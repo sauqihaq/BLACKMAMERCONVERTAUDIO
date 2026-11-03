@@ -62,11 +62,9 @@ const upload = multer({ dest: TMP_DIR, limits: { fileSize: 250 * 1024 * 1024 } }
 const LOCALES = ['en', 'id'];
 
 function localeFromReq(req) {
+  // Bahasa Indonesia is the default. /en is an explicit opt-in saved as a cookie.
   const cookie = auth.readCookie(req, 'blackmamerstudio_locale');
-  if (cookie && LOCALES.includes(cookie)) return cookie;
-  const header = String(req.headers['accept-language'] || '');
-  if (/\bid\b/i.test(header.split(',')[0] || '')) return 'id';
-  return 'en';
+  return cookie && LOCALES.includes(cookie) ? cookie : 'id';
 }
 
 function slug(value) {
@@ -268,7 +266,10 @@ app.post('/api/admin/reset-device', auth.requireAdmin, (req, res) => {
 });
 
 app.get('/auth/discord', (req, res, next) => {
-  if (!config.discord.clientId) return res.redirect('/login');
+  if (!config.discord.clientId) {
+    const next = typeof req.query.next === 'string' && /^\/(?!\/)/.test(req.query.next) ? req.query.next : '/dashboard';
+    return res.redirect(`/login?next=${encodeURIComponent(next)}`);
+  }
   next();
 });
 
@@ -294,9 +295,9 @@ async function handleCallback(req, res) {
   const verifier = auth.readCookie(req, auth.PKCE_COOKIE);
   const next = auth.readCookie(req, auth.NEXT_COOKIE) || '/dashboard';
 
-  if (error) return res.redirect('/en?auth=cancelled');
-  if (!code) return res.redirect('/en?auth=missing_code');
-  if (!expected || expected !== state) return res.redirect('/en?auth=state_mismatch');
+  if (error) return res.redirect('/login?error=discord_cancelled');
+  if (!code) return res.redirect('/login?error=discord_missing_code');
+  if (!expected || expected !== state) return res.redirect('/login?error=discord_state_mismatch');
 
   try {
     const token = await auth.exchangeCode(String(code), verifier);
@@ -312,7 +313,7 @@ async function handleCallback(req, res) {
     res.redirect(next.startsWith('/') ? next : '/dashboard');
   } catch (err) {
     console.error('[auth] callback failed:', err.message);
-    res.redirect('/en?auth=failed');
+    res.redirect('/login?error=discord_failed');
   }
 }
 
@@ -339,24 +340,28 @@ app.post('/auth/dev-login', (req, res) => {
   res.json({ ok: true, user });
 });
 
-app.post('/auth/admin-login', (req, res) => {
-  if (!config.adminLogin.enabled) return res.status(404).json({ error: 'Admin login is not configured.' });
-  const ok = auth.adminLogin(res, req.body?.username, req.body?.password);
-  if (!ok) return res.status(401).json({ error: 'Wrong username or password.' });
-  res.json({ ok: true, next: '/dashboard' });
+// Admin entry point. Never expose the admin workspace without authorization.
+app.get('/admin', (req, res) => {
+  const user = auth.currentUser(req);
+  if (user && user.isAdmin && !user.blocked) return res.redirect('/dashboard#/admin');
+  return res.redirect('/admin-login');
 });
 
 app.get('/admin-login', (req, res) => {
-  if (!config.adminLogin.enabled) return res.status(404).send('Not found');
-  res.type('html').send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin · BLACKMAMERSTUDIO</title>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0a0a0b;color:#e8e8ea;font-family:system-ui,sans-serif}
-form{width:min(360px,90vw);padding:28px;border:1px solid #2a2a2e;border-radius:14px;background:#121214;display:grid;gap:12px}
-h1{margin:0 0 4px;font-size:18px}input,button{padding:12px;border-radius:8px;border:1px solid #333;background:#1a1a1d;color:inherit;font:inherit}
-button{background:#c0121f;border-color:#c0121f;font-weight:600;cursor:pointer}#e{color:#ff6b6b;font-size:13px;min-height:16px}</style></head>
-<body><form id="f"><h1>BLACKMAMERSTUDIO Admin</h1><input name="username" placeholder="Username" autocomplete="username" required>
-<input name="password" type="password" placeholder="Password" autocomplete="current-password" required><div id="e"></div><button>Login</button></form>
-<script>f.onsubmit=async e=>{e.preventDefault();const r=await fetch('/auth/admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(f)))});
-const j=await r.json();if(j.ok)location.href='/dashboard';else document.getElementById('e').textContent=j.error||'Failed'}</script></body></html>`);
+  const user = auth.currentUser(req);
+  if (user && user.isAdmin && !user.blocked) return res.redirect('/dashboard#/admin');
+  res.set('Cache-Control', 'no-store');
+  return res.sendFile(path.join(PUBLIC_DIR, 'admin-login.html'));
+});
+
+app.post('/auth/admin-login', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  if (!config.adminLogin.enabled) {
+    return res.status(503).json({ error: 'Login admin belum dikonfigurasi. Atur ADMIN_PASSWORD di Environment Variables Vercel.' });
+  }
+  const ok = auth.adminLogin(res, req.body?.username, req.body?.password);
+  if (!ok) return res.status(401).json({ error: 'Username atau password admin salah.' });
+  res.json({ ok: true, next: '/dashboard#/admin' });
 });
 
 app.post('/auth/logout', (req, res) => {
@@ -437,7 +442,7 @@ app.get('/:locale(en|id)/:page(privacy|terms)', (req, res, next) => {
 
 app.get('/dashboard', (req, res) => {
   const user = auth.currentUser(req);
-  if (!user) return res.redirect(`/${localeFromReq(req)}?login=1&next=%2Fdashboard`);
+  if (!user) return res.redirect('/login?next=%2Fdashboard');
   res.sendFile(path.join(PUBLIC_DIR, 'dashboard.html'));
 });
 
@@ -447,7 +452,7 @@ app.get('/checkout', (req, res) => {
   if (!config.plans[plan]) return res.redirect('/dashboard');
 
   if (!user) {
-    return res.redirect(`/auth/discord?next=${encodeURIComponent(`/checkout?plan=${plan}`)}`);
+    return res.redirect(`/login?next=${encodeURIComponent(`/checkout?plan=${plan}`)}`);
   }
   res.sendFile(path.join(PUBLIC_DIR, 'checkout.html'));
 });
@@ -1087,7 +1092,7 @@ app.post('/api/admin/announcement', auth.requireAdmin, (req, res) => {
 
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Endpoint not found.' });
-  res.status(404).sendFile(path.join(PUBLIC_DIR, 'en', 'index.html'));
+  res.status(404).sendFile(path.join(PUBLIC_DIR, '404.html'));
 });
 
 if (config.isVercel || require.main !== module) {

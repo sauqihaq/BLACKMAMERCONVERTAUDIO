@@ -3,5 +3,9 @@
   "functions": {
     "server.js": { "maxDuration": 300, "memory": 1024, "includeFiles": "public/**" }
   },
-  "rewrites": [{ "source": "/(.*)", "destination": "/server.js" }]
+  "rewrites": [
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/admin-login", "destination": "/admin-login.html" },
+    { "source": "/(.*)", "destination": "/server.js" }
+  ]
 }

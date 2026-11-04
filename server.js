@@ -413,6 +413,7 @@ app.get('/api/auth/me', (req, res) => {
       until: user.planUntil,
       unlimited: plan.unlimited,
       batchSize: plan.batchSize,
+      maxFileMb: plan.maxFileMb,
       speedControl: plan.speedControl,
     },
     quota: { left: quotaLeft(user), limit: plan.conversionsPerDay },

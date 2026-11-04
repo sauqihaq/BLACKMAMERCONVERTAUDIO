@@ -55,3 +55,9 @@ Catatan: storage Vercel sementara (/tmp) dan body request maks 4.5MB — untuk k
 - `/admin-login` tetap bisa dibuka langsung; tanpa `ADMIN_PASSWORD`, form tetap terbuka namun login akan memberi pesan konfigurasi yang jelas.
 - Deployment ke Vercel membutuhkan `ADMIN_PASSWORD`, `ADMIN_USERNAME` (default `blackmamer`), `SESSION_SECRET` (acak & kuat), `BASE_URL` dengan URL Vercel, serta `UPSTASH_REDIS_REST_URL` dan `UPSTASH_REDIS_REST_TOKEN` untuk menyimpan akun antar-instance.
 - Setelah ganti environment variables, **redeploy**. Edit ZIP lokal tidak otomatis mengubah situs yang sudah online.
+
+## Bulk audio conversion (5 November 2026)
+- In Dashboard → Convert → **Drop file**, choose or drag up to **50 audio files** at a time. Supported types include MP3, WAV, FLAC, M4A, OGG, AAC, OPUS, WMA, AIFF, MP4 and WEBM.
+- Files are processed **sequentially** using the existing `/api/convert-upload` + FFmpeg pipeline. The queue shows file-level progress, lets you stop after the current file, and continues past errors. Existing daily quotas and per-file size limits still apply.
+- Download each converted audio part, or **Download all as ZIP** (browser-side, no external library; up to 180 MB combined). Larger batches can use the individual download links.
+- A browser refresh interrupts the queue. On **Vercel**, body limits (about 4.5 MB) and ephemeral filesystem/serverless jobs also constrain the original audio converter. Reliable larger uploads and long-running jobs require persistent hosting such as a VPS or appropriately configured worker/storage.

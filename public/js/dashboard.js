@@ -268,9 +268,9 @@
             <div id="source-file" ${state.mode === 'file' ? '' : 'hidden'}>
               <label class="dropzone" id="dropzone" for="file-input">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5-5 5 5"></path><path d="M12 5v12"></path></svg>
-                <strong>Drop an audio file or click to browse</strong>
-                <small>MP3, WAV, FLAC, M4A, OGG — up to ${me.plan.id === 'free' ? 200 : 200} MB</small>
-                <input type="file" id="file-input" accept="audio/*" hidden />
+                <strong>Drop audio files or click to select many</strong>
+                <small>Bulk selection · MP3, WAV, FLAC, M4A, OGG and more · up to ${me.plan.maxFileMb} MB per file</small>
+                <input type="file" id="file-input" accept="audio/*,.mp3,.wav,.flac,.m4a,.ogg,.aac,.opus,.wma,.aiff,.mp4,.webm" multiple hidden />
               </label>
               <div id="file-name" class="hint" style="margin-top:8px"></div>
             </div>
@@ -326,6 +326,8 @@
       if (assetsEl && assets.status === 'fulfilled') assetsEl.textContent = String((assets.value.assets || []).length);
     });
 
+    if (window.BMSBulk) window.BMSBulk.mount();
+
     const urlInput = $('#url-input');
     const fileInput = $('#file-input');
 
@@ -378,11 +380,11 @@
       $('#dropzone').classList.remove('is-drag');
       if (e.dataTransfer.files.length) {
         fileInput.files = e.dataTransfer.files;
-        $('#file-name').textContent = e.dataTransfer.files[0].name;
+        $('#file-name').textContent = e.dataTransfer.files.length + ' files selected · ' + Array.from(e.dataTransfer.files).map((f) => f.name).join(', ');
       }
     });
     fileInput.addEventListener('change', () => {
-      $('#file-name').textContent = fileInput.files[0] ? fileInput.files[0].name : '';
+      $('#file-name').textContent = fileInput.files.length ? fileInput.files.length + ' file(s) selected · ' + Array.from(fileInput.files).map((f) => f.name).join(', ') : '';
     });
 
     $('#convert-btn').addEventListener('click', startConvert);
@@ -392,6 +394,13 @@
       btn.disabled = true;
 
       try {
+        if (state.mode === 'file' && fileInput.files.length > 1) {
+          if (!window.BMSBulk) throw new Error('Bulk converter is unavailable. Reload this page.');
+          await window.BMSBulk.start(Array.from(fileInput.files), {
+            api, toast, paintUser, me: state.me, preset: state.preset, normalize: $('#normalize').checked
+          });
+          return;
+        }
         let jobId;
 
         if (state.mode === 'url') {
@@ -404,6 +413,7 @@
           const form = new FormData();
           form.append('file', fileInput.files[0]);
           form.append('preset', state.preset);
+          if ($('#normalize').checked) form.append('normalize', 'true');
           const res = await api('/api/convert-upload', { method: 'POST', body: form });
           jobId = res.jobId;
         }
@@ -458,8 +468,8 @@
           $('#convert-btn').disabled = false;
           paintParts(job.parts || []);
           if (source) source.close();
-          state.me.quota.left = Math.max(0, (state.me.quota.left || 0) - 1);
           if (state.me.quota.left !== null) {
+            state.me.quota.left = Math.max(0, state.me.quota.left - 1);
             $('#quota-text').textContent = `${state.me.quota.left} / ${state.me.quota.limit}`;
             const liveQuota = $('#bms-stat-quota');
             if (liveQuota) liveQuota.textContent = String(state.me.quota.left);

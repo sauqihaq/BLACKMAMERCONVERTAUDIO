@@ -1,0 +1,35 @@
+/* Lightweight dark/red batch queue in the BLACKMAMERSTUDIO workspace. */
+.bms-bulk-card { margin-top: 18px; border-color: rgba(249, 61, 86, .25); }
+.bms-bulk-card .card-head { flex-wrap: wrap; }
+.bms-bulk-top, .bms-bulk-item-head, .bms-bulk-actions {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+}
+.bms-bulk-top p { margin: 5px 0 0; }
+.bms-bulk-track { margin: 16px 0 20px; height: 7px; }
+.bms-bulk-items { display: grid; gap: 9px; max-height: 600px; overflow-y: auto; }
+.bms-bulk-item {
+  padding: 13px; border: 1px solid rgba(255,255,255,.09);
+  background: rgba(255,255,255,.018); border-radius: 11px;
+}
+.bms-bulk-item-head { flex-wrap: nowrap; }
+.bms-bulk-index {
+  flex: 0 0 26px; display: grid; place-items: center; width: 26px; height: 26px;
+  border-radius: 8px; background: rgba(250,40,68,.11); color: #ff7386;
+  font: 700 11px var(--font-mono,monospace);
+}
+.bms-bulk-item-name { flex: 1; min-width: 0; }
+.bms-bulk-item-name strong, .bms-bulk-item-name small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bms-bulk-item-name strong { font-size: 12.5px; }
+.bms-bulk-item-name small { color: var(--muted); font-size: 11px; margin-top: 3px; }
+.bms-bulk-status { flex: none; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #b4b7c0; }
+.bms-bulk-status.is-done { color: #34d399; }
+.bms-bulk-status.is-error { color: #f87171; }
+.bms-bulk-status.is-converting, .bms-bulk-status.is-uploading { color: #ff667c; }
+.bms-bulk-mini { margin-top: 11px; height: 3px; background: rgba(255,255,255,.09); border-radius: 5px; overflow: hidden; }
+.bms-bulk-mini i { display: block; height: 100%; background: linear-gradient(90deg,#b20e2a,#ff5572); border-radius: inherit; transition: width .25s ease; }
+.bms-bulk-links { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 12px; }
+.bms-bulk-error { color: #f87171; font-size: 11.5px; margin: 8px 0 0; overflow-wrap: anywhere; }
+.bms-bulk-actions { margin-top: 17px; border-top: 1px solid rgba(255,255,255,.08); padding-top: 16px; }
+.bms-bulk-actions .hint { flex: 1; }
+@media (max-width: 600px) { .bms-bulk-item-head { gap: 8px; } .bms-bulk-item-name strong { max-width: 45vw; } }
+@media (prefers-reduced-motion: reduce) { .bms-bulk-mini i { transition: none; } }

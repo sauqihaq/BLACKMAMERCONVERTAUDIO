@@ -478,7 +478,7 @@ app.post('/api/detect', auth.requireAuth, async (req, res) => {
       estimatedParts: Math.max(1, Math.ceil(meta.durationSec / config.roblox.maxAssetSeconds)),
     });
   } catch (err) {
-    res.status(502).json({ error: 'Could not read that link.', detail: err.message });
+    res.status(502).json({ error: err.code ? err.message : 'Could not read that link.', code: err.code, detail: err.message });
   }
 });
 
